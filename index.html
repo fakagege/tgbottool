@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+    <meta name="robots" content="noindex, nofollow"> <!-- 禁止搜索引擎爬取 -->
+    
+    <!-- 引入 Bootstrap CSS -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+ <title>Telegram Bot 信息发布工具</title>
+
+</head>
+<body
+
+    <div class="container py-5">
+        <div class="card shadow-lg">
+            <div class="card-body">
+                <h2 class="text-center mb-4">Telegram Bot 信息发布工具</h2>
+                <form id="telegram-form">
+                    <!-- Bot Token -->
+                    <div class="mb-3">
+                        <label for="bot_token" class="form-label">Bot Token</label>
+                        <input type="text" id="bot_token" name="bot_token" class="form-control" required>
+                    </div>
+
+                    <!-- Chat ID -->
+                    <div class="mb-3">
+                        <label for="chat_id" class="form-label">Chat ID</label>
+                        <input type="text" id="chat_id" name="chat_id" class="form-control" required>
+                    </div>
+
+                    <!-- Message Type -->
+                    <div class="mb-3">
+                        <label class="form-label">消息类型</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="message_type" id="text_message" value="text" checked>
+                                <label class="form-check-label" for="text_message">文本消息</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="message_type" id="photo_message" value="photo">
+                                <label class="form-check-label" for="photo_message">单图片消息</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="message_type" id="document_message" value="document">
+                                <label class="form-check-label" for="document_message">文件消息</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="message_type" id="video_message" value="video">
+                                <label class="form-check-label" for="video_message">视频消息</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="message_type" id="animation_message" value="animation">
+                                <label class="form-check-label" for="animation_message">动图消息</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div class="mb-3" id="file-upload-group" style="display: none;">
+                        <label for="file" id="file-label" class="form-label">上传文件</label>
+                        <input type="file" id="file" name="file" class="form-control" accept="image/*,video/*,.pdf,.doc,.docx,.zip">
+                    </div>
+
+                    <!-- Options -->
+                    <div class="mb-3">
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="disable_preview" name="disable_preview">
+                                <label class="form-check-label" for="disable_preview">禁用展示链接预览</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="disable_notification" name="disable_notification">
+                                <label class="form-check-label" for="disable_notification">禁用消息提醒</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="protect_content" name="protect_content">
+                                <label class="form-check-label" for="protect_content">内容保护</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Message Content -->
+                    <div class="mb-3">
+                        <label for="text" class="form-label">发送内容 (支持 HTML 语法)</label>
+                        <textarea id="text" name="text" rows="4" class="form-control" required></textarea>
+                    </div>
+
+                    <!-- Custom Buttons -->
+                    <h3 class="mt-4">消息自定义按钮</h3>
+                    <div id="button-rows" class="mb-3"></div>
+
+                    <!-- Buttons Section -->
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-primary" id="add-row">添加按钮</button>
+                        <button type="submit" class="btn btn-success">发送</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+</div>
+
+   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const fileUploadGroup = document.getElementById('file-upload-group');
+        const fileLabel = document.getElementById('file-label');
+        const messageTypeRadios = document.getElementsByName('message_type');
+        const buttonRowsContainer = document.getElementById('button-rows');
+        const addRowButton = document.getElementById('add-row');
+        const form = document.getElementById('telegram-form');
+
+        // Toggle file upload visibility based on message type
+        const toggleFileUploadVisibility = () => {
+            const selectedType = Array.from(messageTypeRadios).find(radio => radio.checked)?.value;
+            if (selectedType === 'text') {
+                fileUploadGroup.style.display = 'none';
+            } else {
+                fileUploadGroup.style.display = 'block';
+
+                if (selectedType === 'photo') {
+                    fileLabel.textContent = '上传图片 (单张)';
+                } else if (selectedType === 'document') {
+                    fileLabel.textContent = '上传文件';
+                } else if (selectedType === 'video') {
+                    fileLabel.textContent = '上传视频 (50MB Max)';
+                } else if (selectedType === 'animation') {
+                    fileLabel.textContent = '上传动图或视频 (50MB Max)';
+                }
+            }
+        };
+
+        toggleFileUploadVisibility();
+        messageTypeRadios.forEach(radio => radio.addEventListener('change', toggleFileUploadVisibility));
+
+        // Update row numbers
+        const updateRowNumbers = () => {
+            const rows = buttonRowsContainer.querySelectorAll('.button-row');
+            rows.forEach((row, index) => {
+                const numberElement = row.querySelector('.row-number');
+                if (numberElement) numberElement.textContent = index + 1;
+            });
+        };
+
+        // Add button row
+        addRowButton.addEventListener('click', () => {
+            const row = document.createElement('div');
+            row.classList.add('d-flex', 'gap-3', 'mb-3', 'align-items-center', 'button-row');
+
+            const rowNumber = document.createElement('span');
+            rowNumber.classList.add('row-number', 'badge', 'bg-secondary');
+            rowNumber.style.minWidth = '30px';
+            rowNumber.style.textAlign = 'center';
+            rowNumber.textContent = buttonRowsContainer.children.length + 1;
+
+            const buttonTextInput = document.createElement('input');
+            buttonTextInput.type = 'text';
+            buttonTextInput.placeholder = '按钮文字';
+            buttonTextInput.classList.add('form-control', 'flex-grow-1');
+            buttonTextInput.required = true;
+
+            const buttonLinkInput = document.createElement('input');
+            buttonLinkInput.type = 'text';
+            buttonLinkInput.placeholder = 'https://xxxxxx';
+            buttonLinkInput.classList.add('form-control', 'flex-grow-1');
+            buttonLinkInput.required = true;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '删';
+            deleteButton.classList.add('btn', 'btn-danger');
+            deleteButton.type = 'button';
+            deleteButton.addEventListener('click', () => {
+                row.remove();
+                updateRowNumbers();
+            });
+
+            row.appendChild(rowNumber);
+            row.appendChild(buttonTextInput);
+            row.appendChild(buttonLinkInput);
+            row.appendChild(deleteButton);
+
+            buttonRowsContainer.appendChild(row);
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+
+            // Collect custom buttons
+            const buttons = [];
+            buttonRowsContainer.querySelectorAll('.button-row').forEach(row => {
+                const text = row.querySelector('input:nth-child(2)').value;
+                const url = row.querySelector('input:nth-child(3)').value;
+                if (text && url) {
+                    buttons.push({ text, url });
+                }
+            });
+
+            if (buttons.length > 0) {
+                const replyMarkup = { inline_keyboard: buttons.map(button => [{ text: button.text, url: button.url }]) };
+                formData.append('reply_markup', JSON.stringify(replyMarkup));
+            }
+
+            try {
+                const response = await fetch('send_message.php', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('发送失败');
+                const result = await response.json();
+                alert(result.ok ? '消息发送成功' : `发送失败: ${result.error}`);
+            } catch (error) {
+                console.error(error);
+                alert('发送失败');
+            }
+        });
+    });
+</script>
+
+
